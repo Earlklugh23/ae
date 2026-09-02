@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>스마트 주식 종목 스크리너 대시보드</title>
+
+  <!-- iOS 웹앱 전체화면 및 홈화면 설정 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="종목스크리너" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- iOS 사파리 전용 180x180 PNG 아이콘 및 파비콘 링크 -->
+  <link id="dynamicAppleIcon" rel="apple-touch-icon" sizes="180x180" />
+  <link id="dynamicFavicon" rel="icon" type="image/png" sizes="180x180" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --font-scale: 1;
+    }
+    body {
+      font-family: 'Pretendard', sans-serif;
+    }
+    .stock-title-text {
+      font-size: calc(15px * var(--font-scale, 1));
+    }
+    .stock-price-text {
+      font-size: calc(16px * var(--font-scale, 1));
+    }
+    .stock-metric-text {
+      font-size: calc(12.5px * var(--font-scale, 1));
+    }
+    .stock-desc-text {
+      font-size: calc(12px * var(--font-scale, 1));
+      line-height: 1.6;
+    }
+    .badge-text {
+      font-size: calc(11px * var(--font-scale, 1));
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.03);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 9999px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+
+  <script>
+    (function generateStockBlueIconPng() {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 180;
+        canvas.height = 180;
+        const ctx = canvas.getContext('2d');
+
+        // 1. 블루 / 인디고 그라데이션 배경 (Blue Edition)
+        const bgGrad = ctx.createLinearGradient(0, 0, 180, 180);
+        bgGrad.addColorStop(0, '#2563eb'); // blue-600
+        bgGrad.addColorStop(1, '#4f46e5'); // indigo-600
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, 180, 180);
+
+        // 2. 우측 상단 은은한 원형 장식 효과
+        ctx.beginPath();
+        ctx.arc(140, 40, 36, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.fill();
+
+        // 3. 차트 라인 (그리드 보조선)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(25, 145);
+        ctx.lineTo(155, 145);
+        ctx.stroke();
+
+        // 4. 상승 꺾은선 차트 그래프 및 화살표
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 12;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(35, 125);
+        ctx.lineTo(70, 95);
+        ctx.lineTo(105, 115);
+        ctx.lineTo(145, 52);
+        ctx.stroke();
+
+        // 화살표 촉
+        ctx.beginPath();
+        ctx.moveTo(145, 52);
+        ctx.lineTo(118, 55);
+        ctx.lineTo(142, 79);
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        // 5. 차트 포인트 원형 강조점
+        const points = [
+          { x: 35, y: 125 },
+          { x: 70, y: 95 },
+          { x: 105, y: 115 }
+        ];
+        points.forEach(pt => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 6, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+        });
+
+        const pngUrl = canvas.toDataURL('image/png');
+        document.addEventListener('DOMContentLoaded', () => {
+          const appleIcon = document.getElementById('dynamicAppleIcon');
+          const favicon = document.getElementById('dynamicFavicon');
+          if (appleIcon) appleIcon.href = pngUrl;
+          if (favicon) favicon.href = pngUrl;
+        });
+      } catch (e) {
+        console.warn('Canvas icon generation error:', e);
+      }
+    })();
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+  <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors shadow-sm">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <!-- 상단 1열: 블루 로고, 타이틀, 상태뱃지, 우측 액션 버튼들 -->
+      <div class="flex items-center justify-between h-14 sm:h-16 gap-2">
+        
+        <!-- 블루 테마 로고 및 타이틀 -->
+        <div class="flex items-center space-x-2.5 sm:space-x-3 min-w-0 flex-1">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 flex-shrink-0 border border-blue-400/30">
+            <i class="fa-solid fa-chart-line text-sm sm:text-lg"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center space-x-1.5 flex-wrap">
+              <h1 class="text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white truncate">
+                주식 조건검색 스크리너
+              </h1>
+              <span id="syncStatusBadge" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                <span id="syncStatusDot" class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse mr-1"></span>
+                <span id="syncStatusText">연결 대기</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 우측 액션 버튼들 -->
+        <div class="flex items-center space-x-1.5 flex-shrink-0">
+          <!-- 연동 설정 버튼 -->
+          <button onclick="openSettingsModal()" title="시트 연동 설정" class="p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition">
+            <i class="fa-solid fa-gear text-blue-500 sm:mr-1"></i>
+            <span class="hidden sm:inline">설정</span>
+          </button>
+
+          <!-- 원본 시트 바로가기 버튼 -->
+          <a id="sheetSourceBtn" href="https://docs.google.com/spreadsheets/d/1J7G5gIkbE66U2U06BxjyKzTPBLDugxnB4D8fcViWvvk/edit?gid=0#gid=0" target="_blank" title="구글 스프레드시트 열기" class="hidden sm:inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 transition">
+            <i class="fa-solid fa-file-excel mr-1 text-blue-600"></i>
+            시트
+          </a>
+
+          <!-- 실시간 동기화 버튼 -->
+          <button id="refreshBtn" onclick="fetchSheetData(true)" title="데이터 새로고침" class="inline-flex items-center px-2.5 py-1.5 text-xs font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition active:scale-95">
+            <i id="refreshIcon" class="fa-solid fa-arrows-rotate sm:mr-1 text-xs"></i>
+            <span class="hidden sm:inline">동기화</span>
+          </button>
+
+          <!-- 다크모드 토글 -->
+          <button id="themeToggleBtn" onclick="toggleTheme()" title="다크/라이트 모드 전환" class="p-1.5 sm:p-2 rounded-lg text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition">
+            <i id="themeIcon" class="fa-solid fa-moon text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 상단 2열 (글자 크기 미세 조절 바: 모바일 독립 배치) -->
+      <div class="py-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-medium">
+          <i class="fa-solid fa-font text-blue-500 text-xs"></i>
+          <span>글자 크기</span>
+        </div>
+
+        <div class="flex items-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-0.5 gap-2 shadow-inner">
+          <button onclick="changeFontSize(-5)" title="글자 축소" class="p-1 text-slate-600 dark:text-slate-300 hover:text-blue-600 rounded transition active:scale-90">
+            <i class="fa-solid fa-minus text-[10px]"></i>
+          </button>
+          
+          <input type="range" id="fontSizeRange" min="75" max="200" step="5" value="100" oninput="setFontScale(this.value)" title="글자 크기 조절 (75% ~ 200%)" class="w-24 sm:w-36 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-lg cursor-pointer accent-blue-600">
+
+          <button onclick="changeFontSize(5)" title="글자 확대" class="p-1 text-slate-600 dark:text-slate-300 hover:text-blue-600 rounded transition active:scale-90">
+            <i class="fa-solid fa-plus text-[10px]"></i>
+          </button>
+
+          <button onclick="setFontScale(100)" title="100%로 초기화" class="text-[10px] px-1.5 py-0.2 rounded font-mono font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950/60 transition select-none">
+            <span id="fontSizeDisplay">100%</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-5">
+    
+    <!-- 필터 & 조건 선택 패널 -->
+    <div class="mb-5 bg-white dark:bg-slate-800/90 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 shadow-sm space-y-3.5">
+      
+      <!-- 1. 종목 검색창 & 정렬 옵션 -->
+      <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+        <div class="relative flex-1 max-w-md">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </div>
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="종목명, 티커, 설명 키워드 검색..."
+            oninput="handleSearch(this.value)"
+            class="block w-full pl-8 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition"
+          />
+          <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+            <i class="fa-solid fa-circle-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 text-xs">
+          <span class="text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap"><i class="fa-solid fa-arrow-down-short-wide text-blue-500 mr-1"></i>정렬:</span>
+          <select id="sortSelect" onchange="handleSortChange(this.value)" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+            <option value="default">시트 기본 순서</option>
+            <option value="price_desc">현재가 높은순 ↓</option>
+            <option value="price_asc">현재가 낮은순 ↑</option>
+            <option value="per_asc">PER 낮은순 (저평가) ↑</option>
+            <option value="per_desc">PER 높은순 ↓</option>
+            <option value="name_asc">종목명 (가나다순)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 2. 조건 필터 영역 (7대 주요 조건) -->
+      <div class="pt-2 border-t border-slate-100 dark:border-slate-700/80">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center space-x-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+            <i class="fa-solid fa-filter text-blue-500"></i>
+            <span>조건 선택</span>
+          </div>
+          <button onclick="resetConditions()" class="text-[11px] text-slate-400 hover:text-rose-500 underline transition">
+            조건 초기화
+          </button>
+        </div>
+
+        <!-- 50일돌파, 50일선위, 50일선아래, 200일선위, 200일선아래, 급등, 급락 칩 영역 -->
+        <div id="conditionFilterChips" class="flex items-center flex-wrap gap-2 text-xs">
+          <!-- JS로 동적 생성 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 현황 요약 바 & 마지막 동기화 시간 -->
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 mb-4">
+      <div class="flex items-center space-x-2">
+        <span>총 종목: <strong id="totalCount" class="text-blue-600 dark:text-blue-400 font-bold">0</strong>개</span>
+        <span>•</span>
+        <span>조건 만족 종목: <strong id="filteredCount" class="text-indigo-600 dark:text-indigo-400 font-bold">0</strong>개</span>
+      </div>
+      <div class="flex items-center space-x-1">
+        <i class="fa-regular fa-clock text-[11px]"></i>
+        <span id="lastSyncedTime" class="font-medium text-slate-600 dark:text-slate-300">연결 시도 중...</span>
+      </div>
+    </div>
+
+    <!-- 로딩 상태 UI -->
+    <div id="loadingState" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 animate-pulse h-40"></div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 animate-pulse h-40"></div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 animate-pulse h-40"></div>
+    </div>
+
+    <!-- 에러 및 권한 가이드 배너 -->
+    <div id="errorState" class="hidden p-5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl text-amber-900 dark:text-amber-200 mb-5 shadow-sm">
+      <div class="flex items-start space-x-3">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl mt-0.5"></i>
+        <div class="space-y-2 flex-1 text-xs sm:text-sm">
+          <h3 class="font-bold">스프레드시트 데이터를 가져오지 못했습니다</h3>
+          <p id="errorDetailMsg" class="text-amber-800 dark:text-amber-300">
+            구글 스프레드시트의 <strong>[웹에 게시]</strong> 설정이 필요하거나 권한을 확인해 주세요.
+          </p>
+          <div class="flex gap-2 pt-1">
+            <button onclick="fetchSheetData(true)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold">
+              <i class="fa-solid fa-arrows-rotate mr-1"></i> 재시도
+            </button>
+            <button onclick="useMockData()" class="px-3 py-1.5 bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 rounded-lg text-xs font-semibold">
+              샘플 주식 데이터 확인
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 메인 데이터 컨테이너: 종목 카드 그리드 -->
+    <div id="stockGridContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+      <!-- 동적 카드 렌더링 -->
+    </div>
+
+    <!-- 검색/조건 결과 없음 상태 -->
+    <div id="emptyState" class="hidden text-center py-16 bg-white dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-6">
+      <div class="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+        <i class="fa-solid fa-chart-simple text-2xl"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-700 dark:text-slate-200">선택한 조건에 일치하는 종목이 없습니다</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">상단의 조건 필터를 변경하거나 검색어를 재입력해 보세요.</p>
+      <button onclick="resetConditions()" class="mt-3 px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-semibold text-xs rounded-xl border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition">
+        조건 전체 초기화
+      </button>
+    </div>
+
+  </main>
+
+  <!-- 시트 연동 설정 모달 -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-2.5">
+        <div class="flex items-center space-x-2 text-blue-600 dark:text-blue-400 font-bold text-base">
+          <i class="fa-solid fa-sliders"></i>
+          <span>구글 스프레드시트 연동 설정</span>
+        </div>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs sm:text-sm">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            스프레드시트 ID 또는 공유 URL
+          </label>
+          <input
+            type="text"
+            id="modalSheetInput"
+            placeholder="시트 ID 또는 URL 입력"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+          />
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            시트 GID (기본값: 0)
+          </label>
+          <input
+            type="text"
+            id="modalGidInput"
+            placeholder="예: 0"
+            class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs"
+          />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+        <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100">
+          닫기
+        </button>
+        <button onclick="saveSettingsAndSync()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition">
+          저장 및 동기화
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 전달해주신 신규 구글 스프레드시트 ID 및 GID
+    let spreadsheetId = '1J7G5gIkbE66U2U06BxjyKzTPBLDugxnB4D8fcViWvvk';
+    let sheetGid = '0';
+
+    const SETTINGS_KEY = 'stock_screener_blue_settings_v1';
+    const FONT_SCALE_KEY = 'stock_screener_blue_font_scale';
+
+    // 7대 조건 목록 및 열/조건 규칙
+    // AF(인덱스 31), AG(인덱스 32), AH(인덱스 33), AI(인덱스 34), AK(인덱스 36: 메모)
+    const PRESET_CONDITIONS = [
+      { key: 'cond_50_break', title: '50일돌파', type: 'up', targetCol: 33, check: (v) => /돌파/i.test(v) },
+      { key: 'cond_50_above', title: '50일선위', type: 'up', targetCol: 31, check: (v) => /[▲↑]|^위|^상승|^up/i.test(v) },
+      { key: 'cond_50_below', title: '50일선아래', type: 'down', targetCol: 31, check: (v) => /[▼↓]|^아래|^하락|^down/i.test(v) },
+      { key: 'cond_200_above', title: '200일선위', type: 'up', targetCol: 32, check: (v) => /[▲↑]|^위|^상승|^up/i.test(v) },
+      { key: 'cond_200_below', title: '200일선아래', type: 'down', targetCol: 32, check: (v) => /[▼↓]|^아래|^하락|^down/i.test(v) },
+      { key: 'cond_surge', title: '급등', type: 'up', targetCol: 34, check: (v) => /급등|surge/i.test(v) },
+      { key: 'cond_drop', title: '급락', type: 'down', targetCol: 34, check: (v) => /급락|drop|plunge/i.test(v) }
+    ];
+
+    // 전역 상태
+    let rawStocks = [];
+    let conditionColumns = [];
+    let activeConditions = new Set();
+    let searchQuery = '';
+    let currentSort = 'default';
+    let jsonpTimeoutId = null;
+    let currentFontScale = 100;
+    
+    // 구글파이낸스 연산 대기 및 재시도 상태 관리
+    let calcRetryCount = 0;
+    const MAX_CALC_RETRIES = 5;
+    let calcRetryTimeout = null;
+
+    // 샘플 종목 데이터
+    const MOCK_STOCKS = [
+      {
+        name: '삼성전자',
+        code: '005930',
+        price: '73,500',
+        per: '14.2',
+        desc: '글로벌 1위 메모리 반도체 및 스마트폰 제조 기업. HBM 공급 확대 추진.',
+        conditions: { 'cond_50_break': true, 'cond_50_above': true, 'cond_50_below': false, 'cond_200_above': true, 'cond_200_below': false, 'cond_surge': false, 'cond_drop': false },
+        chartUrl: 'https://finance.naver.com/item/fchart.naver?code=005930',
+        financeUrl: 'https://finance.naver.com/item/coinfo.naver?code=005930'
+      },
+      {
+        name: 'SK하이닉스',
+        code: '000660',
+        price: '182,000',
+        per: '18.5',
+        desc: 'AI 고대역폭메모리(HBM) 핵심 선도 기업. 차세대 AI 메모리 기술 경쟁력 확보.',
+        conditions: { 'cond_50_break': true, 'cond_50_above': true, 'cond_50_below': false, 'cond_200_above': true, 'cond_200_below': false, 'cond_surge': true, 'cond_drop': false },
+        chartUrl: 'https://finance.naver.com/item/fchart.naver?code=000660',
+        financeUrl: 'https://finance.naver.com/item/coinfo.naver?code=000660'
+      },
+      {
+        name: '현대차',
+        code: '005380',
+        price: '245,000',
+        per: '5.8',
+        desc: '하이브리드 및 SUV 중심의 견조한 실적. 높은 주주환원율 및 저PER 매력.',
+        conditions: { 'cond_50_break': false, 'cond_50_above': true, 'cond_50_below': false, 'cond_200_above': false, 'cond_200_below': true, 'cond_surge': false, 'cond_drop': false },
+        chartUrl: 'https://finance.naver.com/item/fchart.naver?code=005380',
+        financeUrl: 'https://finance.naver.com/item/coinfo.naver?code=005380'
+      },
+      {
+        name: 'NAVER',
+        code: '035420',
+        price: '178,500',
+        per: '19.4',
+        desc: '국내 1위 검색 포털 및 커머스, 생성형 AI 하이퍼클로바X 서비스 확장.',
+        conditions: { 'cond_50_break': false, 'cond_50_above': false, 'cond_50_below': true, 'cond_200_above': false, 'cond_200_below': true, 'cond_surge': false, 'cond_drop': true },
+        chartUrl: 'https://finance.naver.com/item/fchart.naver?code=035420',
+        financeUrl: 'https://finance.naver.com/item/coinfo.naver?code=035420'
+      },
+      {
+        name: '애플 (Apple)',
+        code: 'AAPL',
+        price: '$224.50',
+        per: '33.1',
+        desc: 'Apple Intelligence 기반 온디바이스 AI 생태계 및 고수익 서비스 확장.',
+        conditions: { 'cond_50_break': true, 'cond_50_above': true, 'cond_50_below': false, 'cond_200_above': true, 'cond_200_below': false, 'cond_surge': true, 'cond_drop': false },
+        chartUrl: 'https://kr.tradingview.com/symbols/NASDAQ-AAPL/',
+        financeUrl: 'https://finance.yahoo.com/quote/AAPL/financials/'
+      },
+      {
+        name: '엔비디아 (NVIDIA)',
+        code: 'NVDA',
+        price: '$128.80',
+        per: '42.0',
+        desc: '생성형 AI GPU 가속기 시장 독점적 지배력. 데이터센터 매출 견조.',
+        conditions: { 'cond_50_break': true, 'cond_50_above': true, 'cond_50_below': false, 'cond_200_above': true, 'cond_200_below': false, 'cond_surge': true, 'cond_drop': false },
+        chartUrl: 'https://kr.tradingview.com/symbols/NASDAQ-NVDA/',
+        financeUrl: 'https://finance.yahoo.com/quote/NVDA/financials/'
+      }
+    ];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      loadFontScale();
+      loadSavedSettings();
+      updateSheetLink();
+      setupConditionColumns([]);
+      fetchSheetData();
+    });
+
+    /* 글자 크기 조절 */
+    function loadFontScale() {
+      try {
+        const saved = sessionStorage.getItem(FONT_SCALE_KEY);
+        if (saved) setFontScale(parseInt(saved, 10), false);
+      } catch (e) {}
+    }
+
+    function setFontScale(percent, save = true) {
+      currentFontScale = Math.min(Math.max(parseInt(percent, 10), 75), 200);
+      document.documentElement.style.setProperty('--font-scale', (currentFontScale / 100).toString());
+      
+      const displayEl = document.getElementById('fontSizeDisplay');
+      const rangeEl = document.getElementById('fontSizeRange');
+      if (displayEl) displayEl.innerText = `${currentFontScale}%`;
+      if (rangeEl) rangeEl.value = currentFontScale;
+
+      if (save) {
+        try { sessionStorage.setItem(FONT_SCALE_KEY, currentFontScale.toString()); } catch (e) {}
+      }
+    }
+
+    function changeFontSize(delta) {
+      setFontScale(currentFontScale + delta);
+    }
+
+    /* 설정 로드 및 시트 링크 갱신 */
+    function loadSavedSettings() {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(SETTINGS_KEY));
+        if (saved) {
+          if (saved.id) spreadsheetId = saved.id;
+          if (saved.gid !== undefined) sheetGid = saved.gid;
+        }
+      } catch (e) {}
+    }
+
+    function updateSheetLink() {
+      const btn = document.getElementById('sheetSourceBtn');
+      if (btn) {
+        btn.href = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit${sheetGid ? `?gid=${sheetGid}#gid=${sheetGid}` : ''}`;
+      }
+    }
+
+    function fetchSheetData(isManual = false, retryAttempt = 0) {
+      if (calcRetryTimeout) {
+        clearTimeout(calcRetryTimeout);
+        calcRetryTimeout = null;
+      }
+      
+      calcRetryCount = retryAttempt;
+
+      const loading = document.getElementById('loadingState');
+      const errorEl = document.getElementById('errorState');
+      const refreshIcon = document.getElementById('refreshIcon');
+      const badge = document.getElementById('syncStatusBadge');
+      const badgeText = document.getElementById('syncStatusText');
+      const badgeDot = document.getElementById('syncStatusDot');
+
+      if (calcRetryCount === 0) {
+        loading.classList.remove('hidden');
+        errorEl.classList.add('hidden');
+      }
+      refreshIcon.classList.add('fa-spin');
+
+      if (calcRetryCount > 0) {
+        badge.className = 'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+        badgeDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse mr-1';
+        badgeText.innerText = `함수 연산 대기 중 (${calcRetryCount}/${MAX_CALC_RETRIES})...`;
+      } else {
+        badge.className = 'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+        badgeDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse mr-1';
+        badgeText.innerText = '데이터 동기화 중...';
+      }
+
+      loadViaJSONP(spreadsheetId, sheetGid, isManual, () => {
+        fallbackFetchEndpoints(isManual);
+      });
+    }
+
+    function loadViaJSONP(id, gid, isManual, onFail) {
+      const callbackName = 'googleSheetStockBlueJSONPCallback_' + Math.floor(Math.random() * 1000000);
+      let isHandled = false;
+
+      if (jsonpTimeoutId) clearTimeout(jsonpTimeoutId);
+      jsonpTimeoutId = setTimeout(() => {
+        if (!isHandled) {
+          isHandled = true;
+          cleanupScript();
+          onFail();
+        }
+      }, 5000);
+
+      const script = document.createElement('script');
+      script.id = callbackName;
+      const gidParam = gid ? `&gid=${gid}` : '';
+      script.src = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=responseHandler:${callbackName}${gidParam}&headers=1&t=${Date.now()}`;
+
+      window[callbackName] = function(response) {
+        if (isHandled) return;
+        isHandled = true;
+        clearTimeout(jsonpTimeoutId);
+        cleanupScript();
+
+        if (response && response.table) {
+          const parsedResult = parseGVizData(response);
+          if (parsedResult && parsedResult.stocks && parsedResult.stocks.length > 0) {
+            // 구글파이낸스 연산 중 상태가 감지된 경우 재시도 처리
+            if (parsedResult.hasPendingFormulas && calcRetryCount < MAX_CALC_RETRIES) {
+              triggerCalculationRetry(isManual);
+              return;
+            }
+            handleSuccessFetch(parsedResult.stocks, isManual, '실시간 연동');
+            return;
+          }
+        }
+        onFail();
+      };
+
+      script.onerror = function() {
+        if (isHandled) return;
+        isHandled = true;
+        clearTimeout(jsonpTimeoutId);
+        cleanupScript();
+        onFail();
+      };
+
+      function cleanupScript() {
+        const el = document.getElementById(callbackName);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+        delete window[callbackName];
+      }
+
+      document.body.appendChild(script);
+    }
+
+    async function fallbackFetchEndpoints(isManual) {
+      const endpoints = [
+        `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json${sheetGid ? `&gid=${sheetGid}` : ''}`,
+        `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv${sheetGid ? `&gid=${sheetGid}` : ''}`,
+        `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv`
+      ];
+
+      let success = false;
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const text = await res.text();
+
+          if (url.includes('tqx=out:json')) {
+            const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]+)\);/);
+            if (match && match[1]) {
+              const data = JSON.parse(match[1]);
+              const parsedResult = parseGVizData(data);
+              if (parsedResult.stocks && parsedResult.stocks.length > 0) {
+                if (parsedResult.hasPendingFormulas && calcRetryCount < MAX_CALC_RETRIES) {
+                  triggerCalculationRetry(isManual);
+                  return;
+                }
+                handleSuccessFetch(parsedResult.stocks, isManual, '실시간 연동');
+                success = true;
+                break;
+              }
+            }
+          } else {
+            const parsedResult = parseCSVData(text);
+            if (parsedResult.stocks && parsedResult.stocks.length > 0) {
+              if (parsedResult.hasPendingFormulas && calcRetryCount < MAX_CALC_RETRIES) {
+                triggerCalculationRetry(isManual);
+                return;
+              }
+              handleSuccessFetch(parsedResult.stocks, isManual, 'CSV 동기화');
+              success = true;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (!success) {
+        handleFailFetch();
+      }
+    }
+
+    /* 구글파이낸스 연산 진행 중일 때 2.5초 후 재시도 트리거 */
+    function triggerCalculationRetry(isManual) {
+      const badge = document.getElementById('syncStatusBadge');
+      const badgeText = document.getElementById('syncStatusText');
+      const badgeDot = document.getElementById('syncStatusDot');
+
+      badge.className = 'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+      badgeDot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse mr-1';
+      badgeText.innerText = `구글파이낸스 연산 완료 대기 중 (${calcRetryCount + 1}/${MAX_CALC_RETRIES})...`;
+
+      calcRetryTimeout = setTimeout(() => {
+        fetchSheetData(isManual, calcRetryCount + 1);
+      }, 2500);
+    }
+
+    function handleSuccessFetch(stocks, isManual, statusLabel) {
+      rawStocks = stocks;
+      calcRetryCount = 0;
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('errorState').classList.add('hidden');
+      document.getElementById('refreshIcon').classList.remove('fa-spin');
+
+      const badge = document.getElementById('syncStatusBadge');
+      badge.className = 'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
+      document.getElementById('syncStatusDot').className = 'w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse mr-1';
+      document.getElementById('syncStatusText').innerText = statusLabel;
+      document.getElementById('lastSyncedTime').innerText = new Date().toLocaleTimeString('ko-KR');
+
+      renderConditionChips();
+      renderAll();
+    }
+
+    function handleFailFetch() {
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('errorState').classList.remove('hidden');
+      document.getElementById('refreshIcon').classList.remove('fa-spin');
+
+      const badge = document.getElementById('syncStatusBadge');
+      badge.className = 'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800';
+      document.getElementById('syncStatusDot').className = 'w-1.5 h-1.5 rounded-full bg-amber-500 mr-1';
+      document.getElementById('syncStatusText').innerText = '접근 권한 확인';
+
+      if (rawStocks.length === 0) {
+        useMockData();
+      }
+    }
+
+    function isPendingFormulaValue(val) {
+      if (!val) return false;
+      const str = String(val).toLowerCase().trim();
+      return str.includes('#n/a') || 
+             str.includes('loading') || 
+             str.includes('로딩') || 
+             str.includes('#value!') || 
+             str.includes('#ref!') || 
+             str.includes('#name?') ||
+             str.includes('로딩 중');
+    }
+
+    function parseGVizData(gviz) {
+      if (!gviz.table || !gviz.table.rows) return { stocks: [], hasPendingFormulas: false };
+      const cols = gviz.table.cols || [];
+      const rows = gviz.table.rows || [];
+
+      const headers = cols.map((c, i) => (c && c.label) ? c.label.trim() : `Col_${i}`);
+      setupConditionColumns(headers);
+
+      const parsed = [];
+      let pendingFormulaCount = 0;
+
+      rows.forEach((rowObj) => {
+        const c = rowObj.c || [];
+        const values = c.map(cell => (cell && cell.v !== null && cell.v !== undefined) ? String(cell.v).trim() : '');
+        if (values.every(v => !v)) return;
+
+        const isPendingRow = values.some(v => isPendingFormulaValue(v));
+        if (isPendingRow) pendingFormulaCount++;
+
+        const stock = extractStockFields(values, headers);
+        if (stock.name) parsed.push(stock);
+      });
+
+      return {
+        stocks: parsed,
+        hasPendingFormulas: pendingFormulaCount > 0
+      };
+    }
+
+    function parseCSVData(csvText) {
+      const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+      if (lines.length === 0) return { stocks: [], hasPendingFormulas: false };
+
+      const rows = lines.map(line => parseCSVLine(line));
+      const headers = rows[0] || [];
+      setupConditionColumns(headers);
+
+      const dataRows = rows.slice(1);
+      const parsed = [];
+      let pendingFormulaCount = 0;
+
+      dataRows.forEach(row => {
+        const isPendingRow = row.some(v => isPendingFormulaValue(v));
+        if (isPendingRow) pendingFormulaCount++;
+
+        const stock = extractStockFields(row, headers);
+        if (stock.name) parsed.push(stock);
+      });
+
+      return {
+        stocks: parsed,
+        hasPendingFormulas: pendingFormulaCount > 0
+      };
+    }
+
+    function setupConditionColumns(headers) {
+      conditionColumns = PRESET_CONDITIONS.map(preset => {
+        let matchedIndex = preset.targetCol;
+        if (headers && headers.length > 0) {
+          headers.forEach((h, idx) => {
+            if (!h) return;
+            const normH = h.toLowerCase().replace(/\s+/g, '');
+            if (preset.key.includes('50') && normH.includes('50') && normH.includes('돌파') && preset.key === 'cond_50_break') matchedIndex = idx;
+            else if (preset.key.includes('50') && normH.includes('50') && !normH.includes('돌파') && preset.key.includes('above')) matchedIndex = idx;
+            else if (preset.key.includes('200') && normH.includes('200') && preset.key.includes('above')) matchedIndex = idx;
+          });
+        }
+        return {
+          key: preset.key,
+          title: preset.title,
+          type: preset.type,
+          index: matchedIndex,
+          checkFn: preset.check
+        };
+      });
+    }
+
+    function extractStockFields(values, headers) {
+      let name = '';
+      let code = '';
+      let price = '-';
+      let per = '-';
+      let desc = '';
+      let chartUrl = '';
+      let financeUrl = '';
+
+      // AK열 (37번째 열, 인덱스 36) 값을 메모로 엄격 지정
+      if (values[36] && values[36].trim()) {
+        desc = values[36].trim();
+      }
+
+      // 휴리스틱 매핑
+      headers.forEach((h, idx) => {
+        const val = values[idx] || '';
+        if (/종목명|회사명|기업명|^name$|^ticker$/i.test(h) && !name) {
+          name = val;
+        } else if (/종목코드|^code$|^symbol$/i.test(h) && !code) {
+          code = val;
+        } else if (/현재가|종가|^price$|^close$/i.test(h) && price === '-') {
+          price = val;
+        } else if (/^per$|^p\/e$|주가수익비율/i.test(h) && per === '-') {
+          per = val;
+        } else if (/차트|그래프|chart/i.test(h) && /^https?:\/\//i.test(val)) {
+          chartUrl = val;
+        } else if (/재무|재무제표|financial/i.test(h) && /^https?:\/\//i.test(val)) {
+          financeUrl = val;
+        }
+      });
+
+      if (!name) name = values[0] || values[1] || '';
+      if (!code && /^[0-9]{6}$/.test(values[1])) code = values[1];
+      if (price === '-' && values[1] && /[0-9,.]+/.test(values[1]) && !code) price = values[1];
+      if (price === '-' && values[2] && /[0-9,.]+/.test(values[2])) price = values[2];
+      if (per === '-' && values[3] && /[0-9.]+/.test(values[3])) per = values[3];
+
+      // 조건 검사
+      const conditions = {};
+      conditionColumns.forEach(col => {
+        let isTrue = false;
+        const val = (values[col.index] || '').trim();
+        if (col.checkFn) {
+          isTrue = col.checkFn(val);
+        } else {
+          isTrue = /^(O|Y|YES|TRUE|1|적합|상회|돌파|달성|포함|위|급등|급락)$/i.test(val);
+        }
+        conditions[col.key] = isTrue;
+      });
+
+      // 차트 및 재무 링크 생성
+      const cleanCode = (code || '').replace(/[^0-9a-zA-Z]/g, '');
+
+      if (!chartUrl) {
+        if (/^[0-9]{6}$/.test(cleanCode)) {
+          chartUrl = `https://finance.naver.com/item/fchart.naver?code=${cleanCode}`;
+        } else if (cleanCode) {
+          chartUrl = `https://kr.tradingview.com/symbols/${cleanCode}/`;
+        } else {
+          chartUrl = `https://finance.naver.com/search/searchList.naver?query=${encodeURIComponent(name)}`;
+        }
+      }
+
+      if (!financeUrl) {
+        if (/^[0-9]{6}$/.test(cleanCode)) {
+          financeUrl = `https://finance.naver.com/item/coinfo.naver?code=${cleanCode}`;
+        } else if (cleanCode) {
+          financeUrl = `https://finance.yahoo.com/quote/${cleanCode}/financials/`;
+        } else {
+          financeUrl = `https://m.stock.naver.com/domestic/stock/${cleanCode || encodeURIComponent(name)}/finance`;
+        }
+      }
+
+      return {
+        id: generateHash(name + code + price),
+        name: name,
+        code: code,
+        price: formatPrice(price),
+        per: formatPER(per),
+        desc: desc,
+        conditions: conditions,
+        chartUrl: chartUrl,
+        financeUrl: financeUrl
+      };
+    }
+
+    function parseCSVLine(text) {
+      let p = '', row = [''], i = 0, s = true;
+      for (let l of text) {
+        if ('"' === l) {
+          if (s && l === p) row[i] += l;
+          s = !s;
+        } else if (',' === l && s) row[i] = '';
+        else if ('\n' === l && s) {
+          if ('\r' === p) row[i] = row[i].slice(0, -1);
+          row = [''];
+          i = 0;
+        } else row[i] += l;
+        p = l;
+      }
+      return row;
+    }
+
+    function generateHash(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return 'stock_' + Math.abs(hash);
+    }
+
+    function formatPrice(val) {
+      if (!val || val === '-') return '-';
+      const num = parseFloat(val.replace(/[^0-9.-]/g, ''));
+      if (isNaN(num)) return val;
+      if (num >= 100) return num.toLocaleString('ko-KR') + '원';
+      return '$' + num.toFixed(2);
+    }
+
+    function formatPER(val) {
+      if (!val || val === '-') return '-';
+      const num = parseFloat(val.replace(/[^0-9.-]/g, ''));
+      if (isNaN(num)) return val;
+      return num.toFixed(1) + '배';
+    }
+
+    function useMockData() {
+      setupConditionColumns([]);
+      rawStocks = MOCK_STOCKS.map((s, idx) => ({
+        id: 'mock_' + idx,
+        name: s.name,
+        code: s.code,
+        price: s.price,
+        per: s.per + '배',
+        desc: s.desc,
+        conditions: { ...s.conditions },
+        chartUrl: s.chartUrl,
+        financeUrl: s.financeUrl
+      }));
+      document.getElementById('lastSyncedTime').innerText = '샘플 데이터 모드';
+      renderConditionChips();
+      renderAll();
+    }
+
+    function renderConditionChips() {
+      const container = document.getElementById('conditionFilterChips');
+      container.innerHTML = '';
+
+      if (conditionColumns.length === 0) {
+        container.innerHTML = '<span class="text-slate-400 text-xs">사용 가능한 조건 열이 없습니다.</span>';
+        return;
+      }
+
+      conditionColumns.forEach(col => {
+        const isSelected = activeConditions.has(col.key);
+        const count = rawStocks.filter(s => s.conditions[col.key]).length;
+        const isUp = col.type === 'up';
+
+        const btn = document.createElement('button');
+        btn.onclick = () => toggleCondition(col.key);
+
+        let chipClass = '';
+        let iconHtml = '';
+        let badgeClass = '';
+
+        if (isUp) {
+          // 상승/돌파 계열 (붉은색 테마)
+          if (isSelected) {
+            chipClass = 'bg-rose-600 text-white border border-rose-500 shadow-rose-500/20';
+            iconHtml = '<i class="fa-solid fa-circle-check text-rose-200 text-[10px]"></i>';
+            badgeClass = 'bg-rose-800 text-white';
+          } else {
+            chipClass = 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/80';
+            iconHtml = '<i class="fa-solid fa-arrow-trend-up text-rose-500 text-[10px]"></i>';
+            badgeClass = 'bg-white dark:bg-rose-900 text-rose-600 dark:text-rose-300';
+          }
+        } else {
+          // 하락/이탈 계열 (파란색 테마)
+          if (isSelected) {
+            chipClass = 'bg-blue-600 text-white border border-blue-500 shadow-blue-500/20';
+            iconHtml = '<i class="fa-solid fa-circle-check text-blue-200 text-[10px]"></i>';
+            badgeClass = 'bg-blue-800 text-white';
+          } else {
+            chipClass = 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-900/80';
+            iconHtml = '<i class="fa-solid fa-arrow-trend-down text-blue-500 text-[10px]"></i>';
+            badgeClass = 'bg-white dark:bg-blue-900 text-blue-600 dark:text-blue-300';
+          }
+        }
+
+        btn.className = `px-3 py-1.5 rounded-xl font-semibold transition flex items-center space-x-1.5 shadow-sm active:scale-95 ${chipClass}`;
+
+        btn.innerHTML = `
+          ${iconHtml}
+          <span class="badge-text">${col.title}</span>
+          <span class="text-[10px] px-1.5 py-0.2 rounded-full font-bold ${badgeClass}">${count}</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    function toggleCondition(key) {
+      if (activeConditions.has(key)) {
+        activeConditions.delete(key);
+      } else {
+        activeConditions.add(key);
+      }
+      renderConditionChips();
+      renderAll();
+    }
+
+    function resetConditions() {
+      activeConditions.clear();
+      renderConditionChips();
+      renderAll();
+    }
+
+    function getFilteredStocks() {
+      let result = rawStocks.filter(stock => {
+        // 다중 조건 필터
+        if (activeConditions.size > 0) {
+          for (let condKey of activeConditions) {
+            if (!stock.conditions[condKey]) return false;
+          }
+        }
+
+        // 검색어 필터
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          const matchName = stock.name.toLowerCase().includes(q);
+          const matchCode = stock.code.toLowerCase().includes(q);
+          const matchDesc = stock.desc.toLowerCase().includes(q);
+          if (!matchName && !matchCode && !matchDesc) return false;
+        }
+
+        return true;
+      });
+
+      // 정렬
+      if (currentSort === 'price_desc') {
+        result.sort((a, b) => parseNumeric(b.price) - parseNumeric(a.price));
+      } else if (currentSort === 'price_asc') {
+        result.sort((a, b) => parseNumeric(a.price) - parseNumeric(b.price));
+      } else if (currentSort === 'per_asc') {
+        result.sort((a, b) => parseNumeric(a.per) - parseNumeric(b.per));
+      } else if (currentSort === 'per_desc') {
+        result.sort((a, b) => parseNumeric(b.per) - parseNumeric(a.per));
+      } else if (currentSort === 'name_asc') {
+        result.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
+      }
+
+      return result;
+    }
+
+    function parseNumeric(str) {
+      if (!str || str === '-') return 99999999;
+      const n = parseFloat(str.replace(/[^0-9.-]/g, ''));
+      return isNaN(n) ? 99999999 : n;
+    }
+
+    function renderAll() {
+      const stocks = getFilteredStocks();
+      document.getElementById('totalCount').innerText = rawStocks.length;
+      document.getElementById('filteredCount').innerText = stocks.length;
+
+      const emptyState = document.getElementById('emptyState');
+      const gridContainer = document.getElementById('stockGridContainer');
+
+      if (stocks.length === 0) {
+        emptyState.classList.remove('hidden');
+        gridContainer.classList.add('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      gridContainer.classList.remove('hidden');
+      renderStockCards(stocks);
+    }
+
+    function renderStockCards(stocks) {
+      const container = document.getElementById('stockGridContainer');
+      container.innerHTML = '';
+
+      stocks.forEach(stock => {
+        const card = document.createElement('div');
+        card.className = 'group relative bg-white dark:bg-slate-800/90 hover:bg-slate-50/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 hover:border-blue-500/80 dark:hover:border-blue-500 rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 shadow-sm hover:shadow-md';
+
+        // 해당 종목이 만족하는 조건 뱃지 생성
+        let activeBadgesHtml = '';
+        conditionColumns.forEach(col => {
+          if (stock.conditions[col.key]) {
+            const isUp = col.type === 'up';
+            if (isUp) {
+              activeBadgesHtml += `
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                  <i class="fa-solid fa-arrow-trend-up text-[9px] mr-1 text-rose-500"></i>${col.title}
+                </span>
+              `;
+            } else {
+              activeBadgesHtml += `
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                  <i class="fa-solid fa-arrow-trend-down text-[9px] mr-1 text-blue-500"></i>${col.title}
+                </span>
+              `;
+            }
+          }
+        });
+
+        card.innerHTML = `
+          <div>
+            <!-- 상단: 종목명, 티커코드 -->
+            <div class="flex items-start justify-between gap-2 mb-2.5">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center space-x-1.5 flex-wrap">
+                  <h2 class="stock-title-text font-extrabold text-slate-900 dark:text-white truncate" title="${stock.name}">
+                    ${stock.name}
+                  </h2>
+                  ${stock.code ? `<span class="font-mono text-xs px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 font-semibold">${stock.code}</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <!-- 만족하는 조건 태그 목록 -->
+            ${activeBadgesHtml ? `<div class="flex items-center flex-wrap gap-1 mb-3">${activeBadgesHtml}</div>` : ''}
+
+            <!-- 핵심 재무 지표: 현재가 & PER (블루 테마) -->
+            <div class="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl p-2.5 mb-3 border border-slate-100 dark:border-slate-700/60">
+              <div>
+                <span class="text-[11px] text-slate-400 font-medium block">현재가</span>
+                <span class="stock-price-text font-mono font-bold text-blue-600 dark:text-blue-400">
+                  ${stock.price}
+                </span>
+              </div>
+              <div>
+                <span class="text-[11px] text-slate-400 font-medium block">PER (주가수익비율)</span>
+                <span class="stock-metric-text font-mono font-bold text-slate-800 dark:text-slate-200">
+                  ${stock.per}
+                </span>
+              </div>
+            </div>
+
+            <!-- 종목 메모 (AK열) -->
+            <div class="mb-3.5">
+              <span class="text-[11px] text-slate-400 font-bold block mb-0.5">메모:</span>
+              <p class="stock-desc-text text-slate-600 dark:text-slate-300 min-h-[3.2em] line-clamp-3 break-words bg-white dark:bg-slate-800/40 p-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                ${stock.desc || ''}
+              </p>
+            </div>
+          </div>
+
+          <!-- 하단: 그래프 및 재무제표 바로가기 링크 버튼 (블루 테마) -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-xs">
+            <a href="${stock.chartUrl}" target="_blank" class="inline-flex items-center justify-center px-3 py-2 rounded-xl font-bold text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-600 dark:hover:text-white border border-blue-200 dark:border-blue-800 transition active:scale-95 shadow-sm" title="${stock.name} 차트 보기">
+              <i class="fa-solid fa-chart-candlestick mr-1.5 text-xs"></i>
+              <span>그래프</span>
+            </a>
+
+            <a href="${stock.financeUrl}" target="_blank" class="inline-flex items-center justify-center px-3 py-2 rounded-xl font-bold text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-600 dark:hover:text-white border border-blue-200 dark:border-blue-800 transition active:scale-95 shadow-sm" title="${stock.name} 재무제표 보기">
+              <i class="fa-solid fa-file-invoice-dollar mr-1.5 text-xs"></i>
+              <span>재무제표</span>
+            </a>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    function handleSearch(val) {
+      searchQuery = val.trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (searchQuery) clearBtn.classList.remove('hidden');
+      else clearBtn.classList.add('hidden');
+      renderAll();
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      searchQuery = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      renderAll();
+    }
+
+    function handleSortChange(sortVal) {
+      currentSort = sortVal;
+      renderAll();
+    }
+
+    function openSettingsModal() {
+      document.getElementById('modalSheetInput').value = spreadsheetId;
+      document.getElementById('modalGidInput').value = sheetGid || '0';
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function saveSettingsAndSync() {
+      const input = document.getElementById('modalSheetInput').value.trim();
+      const gidInput = document.getElementById('modalGidInput').value.trim();
+
+      if (input) {
+        const idMatch = input.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        spreadsheetId = (idMatch && idMatch[1]) ? idMatch[1] : input;
+
+        const gidMatch = input.match(/[#&?]gid=([0-9]+)/);
+        sheetGid = (gidMatch && gidMatch[1]) ? gidMatch[1] : (gidInput || '0');
+
+        try {
+          sessionStorage.setItem(SETTINGS_KEY, JSON.stringify({ id: spreadsheetId, gid: sheetGid }));
+        } catch (e) {}
+
+        updateSheetLink();
+        closeSettingsModal();
+        fetchSheetData(true);
+      }
+    }
+
+    function initTheme() {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+        updateThemeIcon(true);
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      updateThemeIcon(isDark);
+    }
+
+    function updateThemeIcon(isDark) {
+      const icon = document.getElementById('themeIcon');
+      if (isDark) {
+        icon.className = 'fa-solid fa-sun text-amber-400 text-xs';
+      } else {
+        icon.className = 'fa-solid fa-moon text-xs';
+      }
+    }
+  </script>
+</body>
+</html>
